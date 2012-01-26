@@ -3,61 +3,65 @@
 <%@page import="com.google.appengine.api.datastore.DatastoreServiceFactory"%>
 <%@page import="com.google.appengine.api.datastore.*"%>
 <%@page import="com.gquartet.data.*"%>
+<%@page import="com.gquartet.*"%>
 <%@page import="java.util.*"%>
 <%@page import="java.io.IOException"%>
 <%@ include file="header.jsp"%>
 <%@page import="java.util.logging.Logger"%>
 
-<!-- GQu_005825 -->
+
 
 <%
- Logger log = Logger.getLogger("guestbook.jsp"); 
+ 	Logger log = Logger.getLogger("guestbook.jsp"); 
+ 	String talkName = "";
+ 	String resourceId = "";
+ 	String talkKey = "";
+ 	long slideNo = 1;
+ 	String token ="";
+  	log.warning("Req Parameter Talk Name" + request.getParameter("talkName"));
+  	log.warning("Req Parameter Slide No" + request.getParameter("slideNo"));
 
+	if ((request.getParameter("talkName"))!=null){
+  		talkName = request.getParameter("talkName");
+//   		log.warning("Talk Name:" + talkName);
 
-String talkName = "";
-String resourceId = "";
-String talkKey = "";
-long slideNo = 4;
+  		Talk t = GQDataStore.GetTalkByTalkName(talkName);
+  		if(t!=null){
+    			resourceId = t.resourceId;
+    			talkKey = t.key;
+    
+			Calendar cal = Calendar.getInstance();
+    			String clientname = String.format("%1$tH%1$tM%1$tS", cal);
+			token = ChannelHelper.addChannel(application, ChannelHelper.getChannelKey(clientname, talkName));
 
-//   log.warning("Req Parameter Talk Name" + request.getParameter("talkName"));
-//   log.warning("Req Parameter Slide No" + request.getParameter("slideNo"));
+  		}else{
+//   			log.warning("Talk Name:" + talkName+" was not found");
+  		}
 
-// if ((request.getParameter("talkName"))!=null){
-//   talkName = request.getParameter("talkName");
-//   log.warning("Talk Name:" + talkName);
+	}else{
+		response.setHeader("Refresh", "0; URL=../index.jsp");
+  	}
 
-//   Talk t = GQDataStore.GetTalkByTalkName(talkName);
-//   if(t!=null){
-//     resourceId = t.resourceId;
-//     talkKey = t.key;
-//   }else{
-//     out.println("<center>Talkname:"+talkName+"</center>");
-//   }
-
-// }else{
-// 	response.setHeader("Refresh", "0; URL=../index.jsp");
-//   }
-// if((request.getParameter("slideNo"))!=null){
-//     slideNo = Long.parseLong(request.getParameter("slideNo"));
-//     }
-
-
-resourceId = "presentation:0AVj9NqXvcoFzZGNnOTg2NzZfMTFkcjJrajZnYw";
-talkKey= "agxncXVhcnRldGJldGFyCgsSBFRhbGsYZgw";
-
+	if((request.getParameter("slideNo"))!=null){
+    		slideNo = Long.parseLong(request.getParameter("slideNo"));
+    	}
+	
+//	resourceId = "presentation:0AVj9NqXvcoFzZGNnOTg2NzZfMTFkcjJrajZnYw";
+	//talkKey= "agxncXVhcnRldGJldGFyCgsSBFRhbGsYZgw";
 
 %>
 
+
+
+
 <head>
 
-   <title>Questions and Comments</title> 
-     
-        
-    
-  <link href="http://ajax.googleapis.com/ajax/libs/jqueryui/1.8/themes/base/jquery-ui.css" rel="stylesheet" type="text/css"/>
-  <script src="http://ajax.googleapis.com/ajax/libs/jquery/1.5/jquery.min.js"></script>
-  <script src="http://ajax.googleapis.com/ajax/libs/jqueryui/1.8/jquery-ui.min.js"></script>
- 
+   
+    <title>GQuartet</title> 
+  	<link href="http://ajax.googleapis.com/ajax/libs/jqueryui/1.8.16/themes/base/jquery-ui.css" rel="stylesheet" type="text/css"/>
+  	<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.7.1/jquery.min.js"></script>
+  	<script src="http://ajax.googleapis.com/ajax/libs/jqueryui/1.8.16/jquery-ui.min.js"></script>
+  	<script type="text/javascript" src="/_ah/channel/jsapi"></script> 
   
   	<style type="text/css">
 
@@ -81,11 +85,7 @@ talkKey= "agxncXVhcnRldGJldGFyCgsSBFRhbGsYZgw";
 	</style>
   
   <script>
-  
-  
-  
-  
-  
+   
   $(document).ready(function() {
     $("#listofquestions").accordion();
     $("#listofquestions" ).accordion({ autoHeight: false });
@@ -96,25 +96,56 @@ talkKey= "agxncXVhcnRldGJldGFyCgsSBFRhbGsYZgw";
      });
   
   </script>
-  
+
+  <script>
+		var paused = false;
+
+   		onOpened = function() {
+    			connected = true;
+			console.log("Opened and connected");
+    		};
+		onError = function(){
+			console.log("There has been an error");
+		}
+		onClose = function(){
+			
+		}
+    		onMessage = function(e){
+			var pageNumber;
+			console.log(paused);
+			pageNumber =$("#slide").contents().find("#pageNumber").val();
+			var	newPageNumber = e.data.substring(8,e.data.length);
+    			console.log("changed by channel Api "+newPageNumber);
+    			if (paused!=true)
+    				window.location = "/guestbook.jsp?talkName=<%=talkName%>&slideNo="+newPageNumber;
+		}
+
+    		channel = new goog.appengine.Channel('<%=token%>');
+    		socket = channel.open();
+    		socket.onopen = onOpened;
+    		socket.onmessage = onMessage;
+    		socket.onerror = onError;
+    		socket.onclose = onClose;
+
+	</script>
+	
+	
  </head>
   
   
 
  <div class="topbar" data-dropdown="dropdown">
-		<div class="topbar-inner">
-			<div class="container-fluid">
-				<a class="brand" href="index.jsp">Quartet</a>
-				<ul class="nav">
-					<li><a href="docs.jsp" target="_blank">Docs</a></li>
-					<li><a href="contacts.jsp" target="_blank">Contact</a></li>
-				</ul>
-				<%@include file="search.jsp"%>
-			</div>
+	<div class="topbar-inner">
+		<div class="container-fluid">
+			<a class="brand" href="index.jsp">Quartet</a>
+			<ul class="nav">
+			<!--<a href="docs.jsp" target="_blank">Docs</a></li>-->
+			<!--<a href="contacts.jsp" target="_blank">Contact</a></li>-->
+			</ul>
+		<%@include file="search.jsp"%>
 		</div>
 	</div>
-
- 
+</div>
 
 
 <!--################### START OF BOTH LEFT AND RIGHT PART ############# -->
@@ -126,52 +157,82 @@ talkKey= "agxncXVhcnRldGJldGFyCgsSBFRhbGsYZgw";
 <div id="showslides" style="width:65%; height:880px; background-color:#ffffff; position:relative; 
             margin-top:5px; margin-left:5px; float:left; padding-left:5px; border:0px">
 	
-  <iframe id="slide" src="viewer/viewer.jsp?talkKey=<%=talkKey%>&resourceId=<%=resourceId%>&slideNo=<%=slideNo%>" 
-  frameborder="5" width=100% height=100%>
-  </iframe>
-     
-  </div> 
+		
+	
+  	<iframe id="slide" src="viewer/viewer.jsp?talkKey=<%=talkKey%>&resourceId=<%=resourceId%>&slideNo=<%=slideNo%>" frameborder="0" width=100% height=100%>
+  	</iframe>
+</div>  
+  
+  
+  
   
  <!--################### END OF LEFT PART ############# -->
   
   
   <!--################### START OF SCRIPT ############# -->
-    <script type="text/javascript">
-      $("#like").click(function(){
-              console.log("like clicked");
-              $.post("/updateutil", {"action":"updateLikes", "talkKey":"<%=talkKey%>", "SlideNo":<%=slideNo%>, "count":1 },function(data){
-                console.log(data+<%=slideNo%>); 
-                $("#like").removeClass("btn primary");
-                $("#like").addClass("btn success disabled");  
-                $("#dislike").addClass("btn danger disabled");  
-            });
+<!--     <script type="text/javascript"> -->
+<!--       $("#like").click(function(){ -->
+<!--               console.log("like clicked"); -->
+<%--               $.post("/updateutil", {"action":"updateLikes", "talkKey":"<%=talkKey%>", "SlideNo":<%=slideNo%>, "count":1 },function(data){ --%>
+<%--                 console.log(data+<%=slideNo%>);  --%>
+<!--                 $("#like").removeClass("btn primary"); -->
+<!--                 $("#like").addClass("btn success disabled");   -->
+<!--                 $("#dislike").addClass("btn danger disabled");   -->
+<!--             }); -->
 
-        });
-        $("#dislike").click(function(){
-              console.log("dislike clicked");
-              $.post("/updateutil", {"action":"updateDislikes", "talkKey":"<%=talkKey%>", "SlideNo":<%=slideNo%>, "count":1 },function(data){
-                console.log("Reutrned:"+data+":"+<%=slideNo%>);  
-                $("#dislike").removeClass("btn primary");
-                $("#like").addClass("btn success disabled");  
-                $("#dislike").addClass("btn danger disabled");  
-            });
+<!--         }); -->
+<!--         $("#dislike").click(function(){ -->
+<!--               console.log("dislike clicked"); -->
+<%--               $.post("/updateutil", {"action":"updateDislikes", "talkKey":"<%=talkKey%>", "SlideNo":<%=slideNo%>, "count":1 },function(data){ --%>
+<%--                 console.log("Reutrned:"+data+":"+<%=slideNo%>);   --%>
+<!--                 $("#dislike").removeClass("btn primary"); -->
+<!--                 $("#like").addClass("btn success disabled");   -->
+<!--                 $("#dislike").addClass("btn danger disabled");   -->
+<!--             }); -->
 
-        });
+<!--         }); -->
 
 
-    		$("#fullscreen").toggle(function(){
-      		$("#social").hide();
-      		$("#slide").animate({"height":"+=185"},500);
-      		},function(){
-      		$("#social").show();
-      		$("#slide").animate({"height":"-=185"},500);
-    		});
+<!--     		$("#fullscreen").toggle(function(){ -->
+<!--       		$("#social").hide(); -->
+<!--       		$("#slide").animate({"height":"+=185"},500); -->
+<!--       		},function(){ -->
+<!--       		$("#social").show(); -->
+<!--       		$("#slide").animate({"height":"-=185"},500); -->
+<!--     		}); -->
     		
     		
     		
 
 
-  	</script>
+<!--   	</script> -->
+  	
+  	
+  	
+  	<script>
+        $("#slide").load(function(){
+        $("#slide").contents().find("#sync").hide();
+        $("#slide").contents().find("#async").click(function(){
+		paused = true;
+		console.log("async clicked");
+        	$("#slide").contents().find("#async").hide();
+        	$("#slide").contents().find("#sync").show();
+	});
+	$("#slide").contents().find("#sync").click(function(){
+		paused = false;
+		console.log("sync clicked");
+        	$("#slide").contents().find("#sync").hide();
+        	$("#slide").contents().find("#async").show();
+	});
+
+	function changedPage(){
+	var pageNumber;
+		pageNumber =$("#slide").contents().find("#pageNumber").val();
+    		console.log("changedPage function was called due to a manual change on page by user "+pageNumber);
+    		window.location = "/guestbook.jsp?talkName=<%=talkName%>&slideNo="+pageNumber;
+	}	
+	});
+</script>  
 
 <!--################### END OF SCRIPT ############# -->
 
@@ -179,13 +240,14 @@ talkKey= "agxncXVhcnRldGJldGFyCgsSBFRhbGsYZgw";
 <!-- ############## START OF RIGHT PART ###################-->
 
 <div id="QuestionsComments" style= "height:880px; width:34%; background-color:#ffffff; position:relative; margin-top:5px; 
-             float:right;overflow:scroll;border: 3px solid #ddd;">
-
+             float:right;overflow:scroll;border: 0px solid #ddd;">
     	   	
                 
          <div id="questbox">
           <h4>Ask, Share, Note with <em>others</em></h4>
         </div>
+        
+        
         <div id="postfeed" style="padding-bottom:10px;padding-top:10px">
           <form  id="question">
             <input type="hidden" name="rating" value=0 />
@@ -367,6 +429,10 @@ talkKey= "agxncXVhcnRldGJldGFyCgsSBFRhbGsYZgw";
            		});
   			return false;
   		}
+  		
+  		
+  		
+  		
 	</script>
 	
 		
@@ -389,6 +455,34 @@ talkKey= "agxncXVhcnRldGJldGFyCgsSBFRhbGsYZgw";
 
 </div>
 </center>
+
+
+
+<script type="text/javascript">
+      $("#like").click(function(){
+              console.log("like clicked");
+              $.post("/updateutil", {"action":"updateLikes", "talkKey":"<%=talkKey%>", "SlideNo":<%=slideNo%>, "count":1 },function(data){
+                console.log(data+<%=slideNo%>);
+                $("#like").removeClass("btn primary");
+                $("#like").addClass("btn success disabled");
+                $("#dislike").addClass("btn danger disabled");
+            });
+
+        });
+        $("#dislike").click(function(){
+              console.log("dislike clicked");
+              $.post("/updateutil", {"action":"updateDislikes", "talkKey":"<%=talkKey%>", "SlideNo":<%=slideNo%>, "count":1 },function(data){
+                console.log("Reutrned:"+data+":"+<%=slideNo%>);
+                $("#dislike").removeClass("btn primary");
+                $("#like").addClass("btn success disabled");
+                $("#dislike").addClass("btn danger disabled");
+            });
+        });
+</script>
+
+
+
+
 <!--####### END OF FEEDBACK BUTTON DIVISION ######### -->
 
 
